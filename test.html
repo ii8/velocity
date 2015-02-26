@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Velocity</title>
+<style>
+body, html
+{
+	margin: 0px;
+	width: 100%;
+	height: 100%;
+	backgroud-color: black;
+	overflow: hidden;
+}
+#framerate
+{
+	position: absolute;
+	top: 20px;
+	right: 10px;
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border-radius: 25px;
+}
+#score
+{
+	position: absolute;
+	top: 20px;
+	left: 10px;
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border-radius: 25px;
+}
+#distance
+{
+	position: absolute;
+	top: 55px;
+	left: 10px;
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border-radius: 25px;
+}
+#canvas
+{
+	width: 100%;
+	height: 100%;
+	border: 2px;
+    border-radius: 35px;
+}
+#menu
+{
+	position: absolute;
+	width: 300px;
+	top: 20%;
+	left: 50%;
+	margin-left: -150px;
+	text-align: center;
+	
+	display: block;
+	
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border-radius: 25px;
+}
+#highscores
+{
+	position: absolute;
+	width: 400px;
+	top: 40%;
+	left: 50%;
+	margin-left: -200px;
+	text-align: center;
+	
+	display: none;
+	
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border-radius: 25px;
+}
+#save{
+	position: absolute;
+	width: 400px;
+	top: 20%;
+	left: 20%;
+	margin-left: -200px;
+	text-align: center;
+}
+</style>
+<script type="text/javascript" src="/assets/js/ajax.js"></script>
+<script type="text/javascript" src="util.js"></script>
+<script type="text/javascript" src="md5.js"></script>
+<script type="text/javascript" src="debug.js"></script>
+<script type="text/javascript" src="J3DI.js"> </script>
+<script type="text/javascript" src="J3DIMath.js"> </script>
+<script id="vshader" type="x-shader/x-vertex">
+    uniform mat4 u_modelViewProjMatrix;
+    uniform mat4 u_normalMatrix;
+    uniform vec3 lightDir;
+
+    attribute vec3 vNormal;
+    attribute vec4 vTexCoord;
+    attribute vec4 vPosition;
+
+    varying float v_Dot;//light intensity for each pixel, passed to fshader
+    varying vec2 v_texCoord;
+
+    void main()
+    {
+        gl_Position = u_modelViewProjMatrix * vPosition;
+        v_texCoord = vTexCoord.st;
+        vec4 transNormal = u_normalMatrix * vec4(vNormal, 1);//calculate trasformed normal position
+        v_Dot = max(dot(transNormal.xyz, lightDir), 0.0) + 0.4;//add ambience
+    }
+</script>
+
+<script id="fshader" type="x-shader/x-fragment">
+    precision mediump float;
+
+    uniform sampler2D sampler2d;
+
+    varying float v_Dot;
+    varying vec2 v_texCoord;
+
+    void main()
+    {
+        vec2 texCoord = vec2(v_texCoord.s, 1.0 - v_texCoord.t);
+        vec4 color = texture2D(sampler2d, texCoord);
+        color += vec4(0.15, 0.1, 0.1, 1);
+        gl_FragColor = vec4(color.xyz * v_Dot, color.a);
+    }
+</script>
+
+<script type="text/javascript" src="main.js"></script>
+
+
+</head>
+
+<body onload="main()">
+<div id="error">Errors and Stuff</div>
+<canvas id="canvas">UR BROWSER SUCKS</canvas>
+<div id="framerate"></div>
+<div id="score"></div>
+<div id="distance"></div>
+<div id="menu">
+^  - accelerate<br>
+< - turn left<br>
+> - turn right<br>
+Avoid the boxes<br>
+GL HF
+</div>
+<div id="save">
+	<input type="text" id="name" placeholder="name" name="name" />
+	<input type="email" id="email" placeholder="email" name="email" />
+	<input type="submit" onClick="saveScore()" value="Save Score" />
+</div>
+<div id="highscores">Highscores</div>
+</body>
+
+</html>

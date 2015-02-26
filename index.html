@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Velocity</title>
+<style>
+body, html
+{
+	margin: 0px;
+	width: 100%;
+	height: 100%;
+	backgroud-color: black;
+	overflow: hidden;
+	font-family: Calibri, sans-serif;
+}
+#framerate
+{
+	position: absolute;
+	top: 20px;
+	right: 10px;
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border-radius: 25px;
+}
+#score
+{
+	position: absolute;
+	top: 20px;
+	left: 10px;
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border-radius: 25px;
+}
+#distance
+{
+	position: absolute;
+	top: 55px;
+	left: 10px;
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border-radius: 25px;
+}
+#canvas
+{
+	width: 100%;
+	height: 100%;
+	border: 2px;
+    border-radius: 35px;
+}
+#menu
+{
+	position: absolute;
+	width: 250px;
+	top: 20%;
+	left: 50%;
+	margin-left: -125px;
+	text-align: center;
+	
+	display: block;
+	
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border-radius: 25px;
+}
+#highscores
+{
+	position: absolute;
+	width: 250px;
+	top: 37%;
+	left: 50%;
+	margin-left: -125px;
+	text-align: center;
+	
+	display: none;
+	
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border-radius: 25px;
+}
+#save
+{
+	position: absolute;
+	width: 250px;
+	top: 30%;
+	left: 50%;
+	margin-left: -125px;
+	text-align: center;
+	
+	display: none;
+	
+
+}
+
+#ads
+{
+	position: absolute;
+	width: 728px;
+	height: 90px;
+	top: 20px;
+	left: 50%;
+	margin-left: -364px;
+	background-color: black;
+}
+
+#leadboltgames
+{
+	position: absolute;
+	width: 480px;
+	height: 600px;
+	top: 50%;
+	left: 50%;
+	margin: -300px 0 0 -240px;
+	background-color: black;
+	display: none;
+}
+#leadboltgames iframe
+{
+	width: 480px;
+	height: 600px;
+	border: none;
+	box-shadow: none;
+}
+
+
+input
+{
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border: 2px solid black;
+	border-radius: 25px;
+
+}
+button
+{
+	position: absolute;
+	bottom: 15px;
+	left: 15px;
+	
+	height: 40px;
+	width: 40px;
+	
+	background-color: rgba(0,0,0,0.3);
+	padding: 5px;
+	color: white;
+	border: 0px;
+	border: 2px solid black;
+	border-radius: 20px;
+}
+
+#othergames
+{
+	left: 70px;
+	width: 120px;
+}
+
+#name
+{
+	width: 176px;
+}
+
+input:active, button:active
+{
+	border: 2px solid red;
+}
+input:focus, button:focus
+{
+	outline: 0;
+}
+
+a:focus, a:active, input[type="submit"]::-moz-focus-inner, button[type="submit"]::-moz-focus-inner
+{
+    border: 0;
+    outline: 0;
+}
+table
+{
+	margin: auto;
+}
+
+</style>
+<script type="text/javascript" src="ajax.js"></script>
+<script type="text/javascript" src="util.js"></script>
+<script type="text/javascript" src="debug.js"></script>
+<script type="text/javascript" src="J3DI.js"> </script>
+<script type="text/javascript" src="J3DIMath.js"> </script>
+<script id="vshader" type="x-shader/x-vertex">
+    uniform mat4 u_modelViewProjMatrix;
+    uniform mat4 u_normalMatrix;
+    uniform vec3 lightDir;
+
+    attribute vec3 vNormal;
+    attribute vec4 vTexCoord;
+    attribute vec4 vPosition;
+
+    varying float v_Dot;//light intensity for each pixel, passed to fshader
+    varying vec2 v_texCoord;
+
+    void main()
+    {
+        gl_Position = u_modelViewProjMatrix * vPosition;
+        v_texCoord = vTexCoord.st;
+        vec4 transNormal = u_normalMatrix * vec4(vNormal, 1);//calculate trasformed normal position
+        v_Dot = max(dot(transNormal.xyz, lightDir), 0.0) + 0.4;//add ambience
+    }
+</script>
+<script id="ground-vshader" type="x-shader/x-vertex">
+	attribute vec3 aVertexPosition;
+	attribute vec3 aVertexNormal;
+	attribute vec2 aTextureCoord;
+
+	uniform mat4 uMVMatrix;
+	uniform mat4 uPMatrix;
+	uniform mat3 uNMatrix;
+
+	varying vec2 vTextureCoord;
+	varying vec3 vTransformedNormal;
+	varying vec4 vPosition;
+
+	void main(void)
+	{
+		vPosition = uMVMatrix * vec4(aVertexPosition, 1.0);
+		gl_Position = uPMatrix * vPosition;
+		vTextureCoord = aTextureCoord;
+		vTransformedNormal = uNMatrix * aVertexNormal;
+	}
+</script>
+
+
+
+<script id="fshader" type="x-shader/x-fragment">
+    precision mediump float;
+
+    uniform sampler2D sampler2d;
+
+    varying float v_Dot;
+    varying vec2 v_texCoord;
+
+    void main()
+    {
+        vec2 texCoord = vec2(v_texCoord.s, 1.0 - v_texCoord.t);
+        vec4 color = texture2D(sampler2d, texCoord);
+        color += vec4(0.15, 0.1, 0.1, 1);
+        gl_FragColor = vec4(color.xyz * v_Dot, color.a);
+    }
+</script>
+
+<script id="ground-fshader" type="x-shader/x-fragment">
+	precision mediump float;
+
+	varying vec2 vTextureCoord;
+	varying vec3 vTransformedNormal;
+	varying vec4 vPosition;
+
+	uniform bool uUseLighting;
+	uniform bool uUseTextures;
+
+	uniform vec3 uAmbientColor;
+
+	uniform vec3 uPointLightingLocation;
+	uniform vec3 uPointLightingColor;
+
+	uniform sampler2D uSampler;
+
+	void main(void)
+	{
+		vec3 lightWeighting;
+		if(!uUseLighting)
+		{
+			lightWeighting = vec3(1.0, 1.0, 1.0);
+		}
+		else
+		{
+			vec3 lightDirection = normalize(uPointLightingLocation - vPosition.xyz);//make usre its length 1
+
+			float directionalLightWeighting = max(dot(normalize(vTransformedNormal), lightDirection), 0.0);
+			lightWeighting = uAmbientColor + uPointLightingColor * directionalLightWeighting;
+		}
+
+		vec4 fragmentColor;
+		if(uUseTextures)
+		{
+			fragmentColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+		}
+		else
+		{
+			fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
+		}
+		gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
+	}
+</script>
+
+<script type="text/javascript" src="main.js"></script>
+
+
+</head>
+
+<body onload="main()">
+<canvas id="canvas">UR BROWSER SUCKS</canvas>
+<div id="framerate"></div>
+<div id="score"></div>
+<div id="distance"></div>
+<div id="menu">
+&#8593 - Accelerate<br>
+&#8592 - Turn left &nbsp <br>
+&#8594 - Turn right<br>
+&nbsp &nbsp &nbsp &nbsp &nbsp H - Show highscores<br>
+Avoid the boxes<br>
+GL HF
+</div>
+<div id="highscores"></div>
+<div id="error"></div>
+<div id="save">
+	<input type="text" id="name" placeholder="name" name="name" />
+	<input type="submit" onClick="saveScore();removeDialog();" value="Save" />
+</div>
+
+<div id="ads">
+	<script type="text/javascript" src="http://ad.leadboltmobile.net/show_app_ad.js?section_id=963728921"></script>
+</div>
+<div id="leadboltgames">
+	<iframe src="http://ad.leadboltmobile.net/show_app_wall?section_id=575539063"></iframe>
+</div>
+
+<button type="submit" id="button1" onclick="toggleSound()"><img src="icon.png" alt="Toggle Sound"></button>
+<button type="submit" id="button2" onclick="toggleSound()"><img src="icon2.png" alt="Toggle Sound"></button>
+
+
+<button type="submit" id="othergames" onclick="toggleGames()">Other Games</button>
+<script>
+	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	ga('create', 'UA-45389877-4', 'auto');
+	ga('send', 'pageview');
+
+</script>
+</body>
+
+</html>
